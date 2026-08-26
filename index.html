@@ -86,16 +86,18 @@
     width:100%; border:1px solid var(--gris-borde); border-radius:6px; padding:6px 8px;
     font: inherit; font-size:.88rem; background:#fdfdfd;
   }
-  .field textarea{ min-height:44px; resize: vertical; }
+  .field textarea{ min-height:44px; resize: none; }
   .rich-field{
     min-height:26px; white-space:pre-wrap; word-break:break-word; outline:none;
     line-height:1.35;
   }
-  .rich-field.grow-area{ min-height:68px; }
+  .rich-field.grow-area{
+    min-height:80px; max-height:80px; overflow-y:auto; font-size:1rem;
+  }
   .rich-field:focus{ border-color: var(--azul); }
   .rich-field font[size="5"]{ font-size:1.3em; }
   .rich-field font[size="1"]{ font-size:0.75em; }
-  .row2{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+  .row2{ display:grid; grid-template-columns: auto 1fr; gap:8px; }
   .row3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; }
 
   .field.dirty input, .field.dirty textarea, .field.dirty select, .field.dirty .rich-field{
@@ -104,9 +106,14 @@
   .field.saved input, .field.saved textarea, .field.saved select, .field.saved .rich-field{
     border-color: var(--ok);
   }
-  .sv-row{ display:flex; gap:4px; }
-  .sv-row input, .sv-row select{ flex:1; min-width:0; }
+  .sv-row{ display:flex; gap:6px; align-items:center; }
+  .sv-row input[type="text"]{ flex:1; min-width:0; }
+  .sv-check{
+    display:flex; align-items:center; gap:3px; font-size:.72rem; color:#647485;
+    white-space:nowrap; cursor:pointer;
+  }
   .alergia-select, .alergia-detalle{ background-color: #fff6c9; }
+  .alergia-select{ width:auto; min-width:0; padding-left:4px; padding-right:4px; }
   .alergia-detalle{ font-weight:700; }
 
   /* ===== BARRA FLOTANTE DE FORMATO (aparece al seleccionar texto) ===== */
@@ -232,7 +239,7 @@
 
 <script>
 // ============ CONFIGURA AQUÍ TU URL DE APPS SCRIPT ============
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwv33l7y_5ZZ9Z2WMAdyr_74cqAsqGXeyCjpIx7EJU_GManwDlNwnAnAFOaOad7QcM/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjlgzpLnXQA5EwdMuJctTt7UehD0wrAY4YD05xc19GpR-rfI14p9Pe_pibreewC3e_/exec';
 // ================================================================
 
 const FIELD_LABELS = {
@@ -251,8 +258,8 @@ const FIELD_LABELS = {
 // Campos donde se puede seleccionar una parte del texto y ponerla en
 // negrita / agrandarla (formato mixto, guardado como texto enriquecido
 // real en la celda de Google Sheets).
-const RICHTEXT_FIELDS = ['nombre', 'jc', 'ap', 'viaFecha', 'pte', 'otros'];
-const RICHTEXT_MULTILINE = ['jc', 'ap', 'pte', 'otros'];
+const RICHTEXT_FIELDS = ['nombre', 'jc', 'ap', 'pte', 'otros'];
+const RICHTEXT_MULTILINE = ['ap', 'pte', 'otros'];
 
 const ESPECIALIDADES = ['', 'COT', 'CIR', 'MI', 'URO', 'NEU', 'DIG', 'CAR', 'OFT', 'DER', 'ORL', 'NEFR'];
 
@@ -270,7 +277,6 @@ const ESPECIALIDAD_COLORS = {
   NEFR: '#ffe0d6'
 };
 
-const SV_TIPOS = ['', 'Implantación', 'Extracción'];
 const VIA_TIPOS = ['', 'VVP', 'VVC', 'VO', 'PICC', 'Reservorio'];
 
 let roomsData = [];
@@ -383,7 +389,7 @@ function renderBed(roomCode, bedLetter, bed){
   wrap.appendChild(title);
 
   wrap.appendChild(makeField(roomCode, 'nombre', bed.nombre, bed.nombreHtml));
-  wrap.appendChild(makeField(roomCode, 'jc', bed.jc, bed.jcHtml, true));
+  wrap.appendChild(makeField(roomCode, 'jc', bed.jc, bed.jcHtml));
   wrap.appendChild(makeField(roomCode, 'ap', bed.ap, bed.apHtml, true));
 
   const row2 = document.createElement('div');
@@ -395,7 +401,7 @@ function renderBed(roomCode, bedLetter, bed){
   const row3 = document.createElement('div');
   row3.className = 'row3';
   row3.appendChild(makeField(roomCode, 'viaTipo', bed.viaTipo));
-  row3.appendChild(makeField(roomCode, 'viaFecha', bed.viaFecha, bed.viaFechaHtml));
+  row3.appendChild(makeField(roomCode, 'viaFecha', bed.viaFecha));
   row3.appendChild(makeSvField(roomCode, bed.svFechaExtra));
   wrap.appendChild(row3);
 
@@ -422,7 +428,7 @@ function makeSvField(roomCode, rawValue){
   const box = document.createElement('div');
   box.className = 'field';
   const label = document.createElement('label');
-  label.textContent = 'SV (fecha / tipo)';
+  label.textContent = 'SV (fecha)';
   box.appendChild(label);
 
   const { fecha, tipo } = parseSvValue(rawValue);
@@ -433,26 +439,28 @@ function makeSvField(roomCode, rawValue){
   const dateInput = document.createElement('input');
   dateInput.type = 'text';
   dateInput.value = fecha;
-  dateInput.placeholder = 'dd/mm';
+  enforceDdMm(dateInput);
 
-  const tipoSelect = document.createElement('select');
-  SV_TIPOS.forEach(opt => {
-    const o = document.createElement('option');
-    o.value = opt; o.textContent = opt || '—';
-    if(opt === tipo) o.selected = true;
-    tipoSelect.appendChild(o);
-  });
+  const checkLabel = document.createElement('label');
+  checkLabel.className = 'sv-check';
+  const checkbox = document.createElement('input');
+  checkbox.type = 'checkbox';
+  checkbox.checked = tipo === 'Implantación';
+  checkLabel.appendChild(checkbox);
+  checkLabel.appendChild(document.createTextNode('Impl.'));
+  checkLabel.title = 'Marcado = fecha de implantación. Sin marcar = fecha de extracción.';
 
   function trigger(){
     box.classList.add('dirty');
     box.classList.remove('saved');
-    scheduleSave(roomCode, 'svFechaExtra', composeSvValue(dateInput.value, tipoSelect.value), box);
+    const nuevoTipo = checkbox.checked ? 'Implantación' : 'Extracción';
+    scheduleSave(roomCode, 'svFechaExtra', composeSvValue(dateInput.value, nuevoTipo), box);
   }
   dateInput.addEventListener('input', trigger);
-  tipoSelect.addEventListener('change', trigger);
+  checkbox.addEventListener('change', trigger);
 
   row.appendChild(dateInput);
-  row.appendChild(tipoSelect);
+  row.appendChild(checkLabel);
   box.appendChild(row);
   return box;
 }
@@ -540,6 +548,11 @@ function makeField(roomCode, field, value, htmlValue, isRich, grow){
       if(String(value).toUpperCase() === opt.toUpperCase()) o.selected = true;
       input.appendChild(o);
     });
+  } else if(field === 'viaFecha'){
+    input = document.createElement('input');
+    input.type = 'text';
+    input.value = value || '';
+    enforceDdMm(input);
   } else {
     input = document.createElement('input');
     input.type = 'text';
@@ -591,6 +604,17 @@ function applyEspecialidadColor(select){
   const color = ESPECIALIDAD_COLORS[select.value.toUpperCase()];
   select.style.backgroundColor = color || '';
   select.style.fontWeight = color ? '700' : '';
+}
+
+// Fuerza el formato dd/mm mientras se escribe (solo dígitos y una barra)
+function enforceDdMm(el){
+  el.setAttribute('maxlength', '5');
+  el.setAttribute('placeholder', 'dd/mm');
+  el.setAttribute('inputmode', 'numeric');
+  el.addEventListener('input', () => {
+    const digits = el.value.replace(/\D/g, '').slice(0, 4);
+    el.value = digits.length > 2 ? digits.slice(0, 2) + '/' + digits.slice(2) : digits;
+  });
 }
 
 function scheduleSave(roomCode, field, value, box){
