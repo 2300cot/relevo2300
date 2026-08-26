@@ -106,13 +106,12 @@
   .field.saved input, .field.saved textarea, .field.saved select, .field.saved .rich-field{
     border-color: var(--ok);
   }
-  .sv-row{ display:flex; gap:6px; align-items:center; }
-  .sv-row input[type="text"]{ flex:1; min-width:0; }
+  .sv-row{ display:flex; flex-direction:column; gap:3px; align-items:flex-start; }
+  .sv-row input[type="text"]{ width:100%; }
   .sv-check{
     display:flex; align-items:center; gap:3px; font-size:.72rem; color:#647485;
     white-space:nowrap; cursor:pointer;
   }
-  .alergia-select, .alergia-detalle{ background-color: #fff6c9; }
   .alergia-select{ width:auto; min-width:0; padding-left:4px; padding-right:4px; }
   .alergia-detalle{ font-weight:700; }
 
@@ -223,6 +222,7 @@
   <button id="btnSelectAll">Marcar todas</button>
   <button id="btnSelectNone">Desmarcar todas</button>
   <button class="ghost" id="btnPrint">🖨 Imprimir seleccionadas</button>
+  <button class="ghost" id="btnPrintSheets">📄 Imprimir desde Sheets</button>
   <span id="status"></span>
 </div>
 
@@ -239,7 +239,7 @@
 
 <script>
 // ============ CONFIGURA AQUÍ TU URL DE APPS SCRIPT ============
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjlgzpLnXQA5EwdMuJctTt7UehD0wrAY4YD05xc19GpR-rfI14p9Pe_pibreewC3e_/exec';
+const APPS_SCRIPT_URL = 'PON_AQUI_TU_URL_TERMINADA_EN_/exec';
 // ================================================================
 
 const FIELD_LABELS = {
@@ -392,10 +392,7 @@ function renderBed(roomCode, bedLetter, bed){
   wrap.appendChild(makeField(roomCode, 'jc', bed.jc, bed.jcHtml));
   wrap.appendChild(makeField(roomCode, 'ap', bed.ap, bed.apHtml, true));
 
-  const row2 = document.createElement('div');
-  row2.className = 'row2';
-  row2.appendChild(makeField(roomCode, 'alergiaSiNo', bed.alergiaSiNo));
-  row2.appendChild(makeField(roomCode, 'alergiaDetalle', bed.alergiaDetalle));
+  const row2 = makeAlergiaRow(roomCode, bed.alergiaSiNo, bed.alergiaDetalle);
   wrap.appendChild(row2);
 
   const row3 = document.createElement('div');
@@ -447,7 +444,6 @@ function makeSvField(roomCode, rawValue){
   checkbox.type = 'checkbox';
   checkbox.checked = tipo === 'Implantación';
   checkLabel.appendChild(checkbox);
-  checkLabel.appendChild(document.createTextNode('Impl.'));
   checkLabel.title = 'Marcado = fecha de implantación. Sin marcar = fecha de extracción.';
 
   function trigger(){
@@ -459,8 +455,8 @@ function makeSvField(roomCode, rawValue){
   dateInput.addEventListener('input', trigger);
   checkbox.addEventListener('change', trigger);
 
-  row.appendChild(dateInput);
   row.appendChild(checkLabel);
+  row.appendChild(dateInput);
   box.appendChild(row);
   return box;
 }
@@ -579,6 +575,59 @@ function makeField(roomCode, field, value, htmlValue, isRich, grow){
 
   box.appendChild(input);
   return box;
+}
+
+function makeAlergiaRow(roomCode, siNoValue, detalleValue){
+  const row = document.createElement('div');
+  row.className = 'row2';
+
+  const boxSiNo = document.createElement('div');
+  boxSiNo.className = 'field';
+  const labelSiNo = document.createElement('label');
+  labelSiNo.textContent = FIELD_LABELS.alergiaSiNo;
+  boxSiNo.appendChild(labelSiNo);
+  const selectSiNo = document.createElement('select');
+  selectSiNo.className = 'alergia-select';
+  ['', 'NO', 'SI'].forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt; o.textContent = opt || '—';
+    if(String(siNoValue).toUpperCase() === opt) o.selected = true;
+    selectSiNo.appendChild(o);
+  });
+  boxSiNo.appendChild(selectSiNo);
+
+  const boxDetalle = document.createElement('div');
+  boxDetalle.className = 'field';
+  const labelDetalle = document.createElement('label');
+  labelDetalle.textContent = FIELD_LABELS.alergiaDetalle;
+  boxDetalle.appendChild(labelDetalle);
+  const inputDetalle = document.createElement('input');
+  inputDetalle.type = 'text';
+  inputDetalle.value = detalleValue || '';
+  inputDetalle.className = 'alergia-detalle';
+  boxDetalle.appendChild(inputDetalle);
+
+  function syncColor(){
+    const isSi = selectSiNo.value.toUpperCase() === 'SI';
+    const color = isSi ? '#fff6c9' : '';
+    selectSiNo.style.backgroundColor = color;
+    inputDetalle.style.backgroundColor = color;
+  }
+  syncColor();
+
+  selectSiNo.addEventListener('change', () => {
+    boxSiNo.classList.add('dirty'); boxSiNo.classList.remove('saved');
+    scheduleSave(roomCode, 'alergiaSiNo', selectSiNo.value, boxSiNo);
+    syncColor();
+  });
+  inputDetalle.addEventListener('input', () => {
+    boxDetalle.classList.add('dirty'); boxDetalle.classList.remove('saved');
+    scheduleSave(roomCode, 'alergiaDetalle', inputDetalle.value, boxDetalle);
+  });
+
+  row.appendChild(boxSiNo);
+  row.appendChild(boxDetalle);
+  return row;
 }
 
 function makeEspecialidadSelect(roomCode, value){
@@ -815,6 +864,34 @@ document.getElementById('btnPrint').addEventListener('click', () => {
     room.classList.toggle('not-selected', !chk.checked);
   });
   window.print();
+});
+
+document.getElementById('btnPrintSheets').addEventListener('click', async () => {
+  const roomNumbers = [];
+  document.querySelectorAll('.room').forEach(room => {
+    const chk = room.querySelector('.printChk');
+    if(chk.checked) roomNumbers.push(room.dataset.roomL.replace(/[PV]$/, ''));
+  });
+  if(roomNumbers.length === 0){
+    setStatus('Marca al menos una habitación', 'err');
+    return;
+  }
+  setStatus('Generando PDF de Sheets…', 'saving');
+  try{
+    const res = await fetch(APPS_SCRIPT_URL + '?action=printUrls&rooms=' + encodeURIComponent(roomNumbers.join(',')) + '&pin=' + encodeURIComponent(getPin()));
+    const json = await res.json();
+    if(!json.ok) throw new Error(json.error || 'Error desconocido');
+    if(json.urls.length === 0){
+      setStatus('No se encontraron esas habitaciones', 'err');
+      return;
+    }
+    json.urls.forEach(url => window.open(url, '_blank'));
+    setStatus(json.urls.length > 1
+      ? 'Abriendo ' + json.urls.length + ' PDF (permite ventanas emergentes si no se abren)'
+      : 'Abriendo PDF…', 'ok');
+  }catch(err){
+    setStatus('Error: ' + err.message, 'err');
+  }
 });
 
 // Al abrir la web: si ya había un PIN válido en esta pestaña, entra directo;
