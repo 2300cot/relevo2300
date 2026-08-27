@@ -48,7 +48,7 @@
   #status.ok{color:var(--ok);}
   #status.err{color:#b3261e;}
 
-  main{ padding: 10px 12px 60px; max-width: 900px; margin: 0 auto; }
+  main{ padding: 10px 12px 60px; max-width: 1100px; margin: 0 auto; }
 
   .room{
     background:#fff; border:1px solid var(--gris-borde); border-radius:12px;
@@ -89,14 +89,14 @@
   .field textarea{ min-height:44px; resize: none; }
   .rich-field{
     min-height:26px; white-space:pre-wrap; word-break:break-word; outline:none;
-    line-height:1.35;
+    line-height:1.35; font-size:13px;
   }
   .rich-field.grow-area{
-    min-height:80px; max-height:80px; overflow-y:auto; font-size:1rem;
+    min-height:80px; max-height:80px; overflow-y:auto;
   }
   .rich-field:focus{ border-color: var(--azul); }
-  .rich-field font[size="5"]{ font-size:1.3em; }
-  .rich-field font[size="1"]{ font-size:0.75em; }
+  .rich-field font[size="5"]{ font-size:14px; }
+  .rich-field font[size="1"]{ font-size:11px; }
   .row2{ display:grid; grid-template-columns: auto 1fr; gap:8px; }
   .row3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; }
 
@@ -106,12 +106,15 @@
   .field.saved input, .field.saved textarea, .field.saved select, .field.saved .rich-field{
     border-color: var(--ok);
   }
-  .sv-row{ display:flex; flex-direction:column; gap:3px; align-items:flex-start; }
-  .sv-row input[type="text"]{ width:100%; }
+  .sv-row{ display:flex; flex-direction:column; gap:5px; align-items:flex-start; }
   .sv-check{
-    display:flex; align-items:center; gap:3px; font-size:.72rem; color:#647485;
+    display:flex; align-items:center; gap:5px; font-size:.75rem; color:#647485;
     white-space:nowrap; cursor:pointer;
   }
+  .sv-check input[type="checkbox"]{
+    width:18px; height:18px; margin:0; accent-color: var(--azul); cursor:pointer;
+  }
+  .date-input{ width:64px !important; flex:none !important; text-align:center; }
   .alergia-select{ width:auto; min-width:0; padding-left:4px; padding-right:4px; }
   .alergia-detalle{ font-weight:700; }
 
@@ -221,8 +224,10 @@
   <button class="primary" id="btnRefresh">↻ Actualizar</button>
   <button id="btnSelectAll">Marcar todas</button>
   <button id="btnSelectNone">Desmarcar todas</button>
-  <button class="ghost" id="btnPrint">🖨 Imprimir seleccionadas</button>
-  <button class="ghost" id="btnPrintSheets">📄 Imprimir desde Sheets</button>
+  <button class="ghost quick-range" data-from="2301" data-to="2305">2301–2305</button>
+  <button class="ghost quick-range" data-from="2306" data-to="2310">2306–2310</button>
+  <button class="ghost quick-range" data-from="2311" data-to="2316">2311–2316</button>
+  <button class="ghost" id="btnPrintSheets">🖨 Imprimir seleccionadas</button>
   <span id="status"></span>
 </div>
 
@@ -239,7 +244,7 @@
 
 <script>
 // ============ CONFIGURA AQUÍ TU URL DE APPS SCRIPT ============
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKbdJSUCC-1d2edjanbBoBaKLCqCLrH5jwLFFAObNNSnCEKIUi8COELr7xftfbYG5_/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynZw2ou5XgXYFyKKQleedEdJgoGNzuGzcdHOUOxYIxDpXSB4eB9ME0ZFk3mUjL78Jz/exec';
 // ================================================================
 
 const FIELD_LABELS = {
@@ -264,13 +269,13 @@ const RICHTEXT_MULTILINE = ['ap', 'pte', 'otros'];
 const ESPECIALIDADES = ['', 'COT', 'CIR', 'MI', 'URO', 'NEU', 'DIG', 'CAR', 'OFT', 'DER', 'ORL', 'NEFR'];
 
 const ESPECIALIDAD_COLORS = {
-  COT:  '#ffe9c7',
-  CIR:  '#ffd6d6',
-  MI:   '#d6ebff',
-  URO:  '#e6d6ff',
+  COT:  '#d6ebff',
+  CIR:  '#ffd6ec',
+  MI:   '#ffe9c7',
+  URO:  '#fff9d6',
   NEU:  '#d6ffe9',
-  DIG:  '#fff9d6',
-  CAR:  '#ffd6ec',
+  DIG:  '#e6d6ff',
+  CAR:  '#ffd6d6',
   OFT:  '#d6fff5',
   DER:  '#f0d6ff',
   ORL:  '#e3ffd6',
@@ -657,6 +662,7 @@ function applyEspecialidadColor(select){
 
 // Fuerza el formato dd/mm mientras se escribe (solo dígitos y una barra)
 function enforceDdMm(el){
+  el.classList.add('date-input');
   el.setAttribute('maxlength', '5');
   el.setAttribute('placeholder', 'dd/mm');
   el.setAttribute('inputmode', 'numeric');
@@ -753,7 +759,7 @@ async function saveRichField(div, box){
     text,
     runs: runs.map(r => ({
       start: r.start, end: r.end, bold: r.bold,
-      size: r.size === 'large' ? 13 : r.size === 'small' ? 7 : null
+      size: r.size === 'large' ? 14 : r.size === 'small' ? 11 : null
     })),
     pin: getPin()
   };
@@ -858,12 +864,16 @@ document.getElementById('btnSelectAll').addEventListener('click', () => {
 document.getElementById('btnSelectNone').addEventListener('click', () => {
   document.querySelectorAll('.printChk').forEach(c => c.checked = false);
 });
-document.getElementById('btnPrint').addEventListener('click', () => {
-  document.querySelectorAll('.room').forEach(room => {
-    const chk = room.querySelector('.printChk');
-    room.classList.toggle('not-selected', !chk.checked);
+
+document.querySelectorAll('.quick-range').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const from = parseInt(btn.dataset.from, 10);
+    const to = parseInt(btn.dataset.to, 10);
+    document.querySelectorAll('.room').forEach(room => {
+      const num = parseInt(room.dataset.roomL.replace(/[PV]$/, ''), 10);
+      room.querySelector('.printChk').checked = (num >= from && num <= to);
+    });
   });
-  window.print();
 });
 
 document.getElementById('btnPrintSheets').addEventListener('click', async () => {
