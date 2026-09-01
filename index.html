@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relevo Enfermería · Hab. 2301-2316</title>
+<style>
+  :root{
+    --azul: #1c4e73;
+    --azul-claro: #eaf1f6;
+    --p-color: #2f6690;
+    --v-color: #9c5b1f;
+    --gris-borde: #cfd8de;
+    --fondo: #f6f8f9;
+    --texto: #1a2733;
+    --ok: #2f7d4f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--fondo);
+    color: var(--texto);
+  }
+  header{
+    background: var(--azul);
+    color:#fff;
+    padding: 14px 16px;
+    position: sticky; top:0; z-index: 10;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    flex-wrap:wrap;
+  }
+  header h1{ font-size:1.05rem; margin:0; font-weight:700; letter-spacing:.2px;}
+  header .sub{font-size:.75rem; opacity:.85;}
+  .toolbar{
+    display:flex; gap:8px; padding:10px 16px; background:#fff;
+    border-bottom:1px solid var(--gris-borde); flex-wrap:wrap; align-items:center;
+    position: sticky; top:56px; z-index:9;
+  }
+  button{
+    font: inherit; border:1px solid var(--gris-borde); background:#fff;
+    padding:8px 12px; border-radius:8px; cursor:pointer; color:var(--texto);
+  }
+  button.primary{ background:var(--azul); color:#fff; border-color:var(--azul);}
+  button.ghost{ background:transparent; }
+  #status{ font-size:.8rem; color:#647485; margin-left:auto;}
+  #status.saving{color:#b4790f;}
+  #status.ok{color:var(--ok);}
+  #status.err{color:#b3261e;}
+
+  main{ padding: 10px 12px 60px; max-width: 1100px; margin: 0 auto; }
+
+  .room{
+    background:#fff; border:1px solid var(--gris-borde); border-radius:12px;
+    margin: 12px 0; overflow:hidden;
+  }
+  .room-head{
+    display:flex; align-items:center; gap:8px;
+    padding:10px 12px; background:var(--azul-claro); border-bottom:1px solid var(--gris-borde);
+  }
+  .room-head label{ display:flex; align-items:center; gap:6px; font-weight:700; font-size:.95rem;}
+  .beds{ display:grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 560px){ .beds{ grid-template-columns: 1fr; } }
+  .bed{ padding:10px 12px; }
+  .bed + .bed{ border-left:1px solid var(--gris-borde); }
+  @media (max-width:560px){ .bed + .bed{ border-left:none; border-top:1px solid var(--gris-borde);} }
+
+  .bed-title{
+    font-weight:700; font-size:.95rem; margin-bottom:8px;
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+  }
+  .bed-title .bed-number{ display:flex; align-items:center; gap:4px; white-space:nowrap; }
+  .bed-title .header-nombre-box{ flex:1; margin:0 4px; }
+  .bed-title .especialidad-select{
+    width:auto; max-width:100px; padding:4px 6px; font-size:.78rem;
+  }
+  .bed-title .especialidad-select.dirty{ border-color:#b4790f; }
+  .bed-title .especialidad-select.saved{ border-color:var(--ok); }
+  .bed-title .tag{
+    font-size:.65rem; padding:2px 6px; border-radius:999px; color:#fff;
+  }
+  .bed.P .tag{ background: var(--p-color); }
+  .bed.V .tag{ background: var(--v-color); }
+
+  .field{ margin-bottom:8px; }
+  .field label{ display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.03em; color:#647485; margin-bottom:2px;}
+  .field input, .field select, .rich-field{
+    width:100%; border:1px solid var(--gris-borde); border-radius:6px; padding:6px 8px;
+    font: inherit; font-size:.88rem; background:#fdfdfd;
+  }
+
+  /* ===== DIMENSIONADO EXACTO RÉPLICA GOOGLE SHEETS ===== */
+  .rich-field{
+    white-space:pre-wrap; word-break:break-word; outline:none;
+    line-height:1.25; font-size:13px; font-family: Arial, sans-serif;
+    overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+  }
+
+  /* Alturas fijas proporcionales a las filas de Sheets */
+  .rich-field.inline-name{
+    min-height:28px; height:28px; padding:4px 6px;
+  }
+  .rich-field.field-jc{
+    min-height:42px; height:42px;
+  }
+  .rich-field.field-ap{
+    min-height:75px; height:75px;
+  }
+  .rich-field.field-pte{
+    min-height:75px; height:75px;
+  }
+  .rich-field.field-otros{
+    min-height:75px; height:75px;
+  }
+
+  .rich-field:focus{ border-color: var(--azul); background:#fff; }
+  .rich-field font[size="5"]{ font-size:14px; }
+  .rich-field font[size="3"]{ font-size:13px; }
+  .rich-field font[size="1"]{ font-size:11px; }
+
+  .char-counter{
+    font-size:.65rem; color:#8a97a3; text-align:right; margin-top:2px;
+  }
+  .char-counter.over{ color:#b3261e; font-weight:700; }
+  .row2{ display:grid; grid-template-columns: auto 1fr; gap:8px; }
+  .row3{ display:grid; grid-template-columns: 1fr 1fr 1.2fr; gap:6px; }
+
+  .field.dirty input, .field.dirty select, .field.dirty .rich-field{
+    border-color:#b4790f; background:#fff8ec;
+  }
+  .field.saved input, .field.saved select, .field.saved .rich-field{
+    border-color: var(--ok);
+  }
+
+  /* ===== ALINEACIÓN SV / CD (COLUMNA Y SEPARACIÓN MEJORADA) ===== */
+  .sv-row{ display:flex; flex-direction:row; align-items:flex-start; justify-content:space-around; gap:12px; width:100%; }
+  .sv-group-sv{ display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .sv-group-cd{ display:flex; flex-direction:column; align-items:center; justify-content:flex-start; }
+  .sv-check{
+    display:flex; align-items:center; gap:3px; font-size:.75rem; color:#647485;
+    white-space:nowrap; cursor:pointer;
+  }
+  .sv-check input[type="checkbox"]{
+    width:16px; height:16px; margin:0; accent-color: var(--azul); cursor:pointer;
+  }
+  .date-input{ width:58px !important; flex:none !important; text-align:center; padding:3px !important; font-size:.8rem !important; }
+  .alergia-select{ width:auto; min-width:0; padding-left:4px; padding-right:4px; }
+  .alergia-detalle{ font-weight:700; }
+
+  /* ===== BARRA FLOTANTE DE FORMATO ===== */
+  #selectionToolbar{
+    position:fixed; z-index:150; display:none;
+    background:var(--texto); border-radius:8px; padding:5px;
+    box-shadow:0 6px 18px rgba(0,0,0,.3);
+    gap:4px;
+  }
+  #selectionToolbar.show{ display:flex; }
+  #selectionToolbar button{
+    background:transparent; border:none; color:#fff;
+    padding:6px 10px; border-radius:5px; font-weight:700; font-size:.85rem;
+    cursor:pointer;
+  }
+  #selectionToolbar button:active, #selectionToolbar button.active{ background:rgba(255,255,255,.25); }
+  #toolSizeSmall{ font-size:11px; }
+  #toolSizeMed{ font-size:13px; }
+  #toolSizeLarge{ font-size:14px; }
+
+  /* ===== PANTALLA DE PIN ===== */
+  #lockScreen{
+    position:fixed; inset:0; background:var(--azul);
+    display:flex; align-items:center; justify-content:center; z-index:100;
+    padding:20px;
+  }
+  #lockScreen.hidden{ display:none; }
+  .lock-box{
+    background:#fff; border-radius:14px; padding:28px 24px; max-width:320px; width:100%;
+    text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .lock-box h2{ margin:0 0 4px; font-size:1.1rem; color:var(--texto); }
+  .lock-box p{ margin:0 0 16px; font-size:.82rem; color:#647485; }
+  .lock-box input{
+    width:100%; text-align:center; font-size:1.4rem; letter-spacing:.3em;
+    padding:10px; border:1px solid var(--gris-borde); border-radius:8px; margin-bottom:10px;
+  }
+  .lock-box button{ width:100%; }
+  .lock-box .err{ color:#b3261e; font-size:.8rem; min-height:1.1em; margin-bottom:8px; }
+</style>
+</head>
+<body>
+
+<div id="lockScreen">
+  <div class="lock-box">
+    <h2>Acceso restringido</h2>
+    <p>Introduce el PIN de la unidad para ver el relevo</p>
+    <div class="err" id="lockErr"></div>
+    <input type="password" inputmode="numeric" id="pinInput" maxlength="12" autocomplete="off">
+    <button class="primary" id="btnUnlock">Entrar</button>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>Relevo Enfermería</h1>
+    <div class="sub">Habitaciones 2301–2316</div>
+  </div>
+  <div class="sub" id="lastSync">Sin datos aún</div>
+</header>
+
+<div class="toolbar">
+  <button class="primary" id="btnRefresh">↻ Actualizar</button>
+  <button id="btnSelectAll">Marcar todas</button>
+  <button id="btnSelectNone">Desmarcar todas</button>
+  <button class="ghost quick-range" data-from="2301" data-to="2305">2301–2305</button>
+  <button class="ghost quick-range" data-from="2306" data-to="2310">2306–2310</button>
+  <button class="ghost quick-range" data-from="2311" data-to="2316">2311–2316</button>
+  <button class="primary" id="btnPrintSheets">🖨 Imprimir PDF desde Sheets</button>
+  <span id="status"></span>
+</div>
+
+<main id="rooms">
+  <p style="text-align:center;color:#8a97a3;">Cargando habitaciones…</p>
+</main>
+
+<div id="selectionToolbar">
+  <button type="button" id="toolBold" title="Negrita">N</button>
+  <button type="button" class="size-btn" id="toolSizeSmall" title="Tamaño pequeño (11px)">A−</button>
+  <button type="button" class="size-btn" id="toolSizeMed" title="Tamaño mediano (13px)">A</button>
+  <button type="button" class="size-btn" id="toolSizeLarge" title="Tamaño grande (14px)">A+</button>
+</div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnvokK8bkwsp5u92QbDIQOc827CZOF9IXj06vIsyeQcdp2Nskwx2gzVi06dJxWu_xG/exec';
+
+const FIELD_LABELS = {
+  nombre: 'Nombre (edad)',
+  especialidad: 'Especialidad',
+  jc: 'Juicio clínico',
+  ap: 'Antecedentes personales',
+  alergiaSiNo: 'Alergias',
+  alergiaDetalle: 'Detalle alergia',
+  viaTipo: 'Vía (tipo)',
+  viaFecha: 'Vía (fecha)',
+  pte: 'Pendiente',
+  otros: 'Otros'
+};
+
+const RICHTEXT_FIELDS = ['nombre', 'jc', 'ap', 'pte', 'otros'];
+const ESPECIALIDADES = ['', 'COT', 'CIR', 'MI', 'URO', 'NEU', 'DIG', 'CAR', 'OFT', 'DER', 'ORL', 'NEFR'];
+
+const ESPECIALIDAD_COLORS = {
+  COT: '#d6ebff', CIR: '#ffd6ec', MI: '#ffe9c7', URO: '#fff9d6',
+  NEU: '#d6ffe9', DIG: '#e6d6ff', CAR: '#ffd6d6', OFT: '#d6fff5',
+  DER: '#f0d6ff', ORL: '#e3ffd6', NEFR: '#ffe0d6'
+};
+
+const VIA_TIPOS = ['', 'VVP', 'VVC', 'VO', 'PICC', 'Reservorio'];
+const VIA_COLORS = {
+  VVP: '#d6ffe0', VVC: '#d6ebff', VO: '#e6e6e6', PICC: '#ffe4c7', RESERVORIO: '#ffd6d6'
+};
+
+let roomsData = [];
+let saveTimers = {};
+
+let capacities = { 
+  nombre: 45,
+  jc: 85,
+  ap: 160, 
+  pte: 160, 
+  otros: 160 
+};
+
+function getPin(){ return sessionStorage.getItem('relevoPin') || ''; }
+
+async function loadData(){
+  setStatus('Cargando…', '');
+  try{
+    const res = await fetch(APPS_SCRIPT_URL + '?action=read&pin=' + encodeURIComponent(getPin()));
+    const json = await res.json();
+    if(!json.ok){
+      if(json.error === 'PIN incorrecto'){
+        sessionStorage.removeItem('relevoPin');
+        showLock('PIN incorrecto. Inténtalo de nuevo.');
+        return false;
+      }
+      throw new Error(json.error || 'Error desconocido');
+    }
+    roomsData = json.data;
+    if(json.capacities) capacities = Object.assign(capacities, json.capacities);
+    render();
+    setStatus('Actualizado', 'ok');
+    document.getElementById('lastSync').textContent = 'Última actualización: ' + new Date().toLocaleTimeString('es-ES');
+    return true;
+  }catch(err){
+    setStatus('Error al cargar: ' + err.message, 'err');
+    return false;
+  }
+}
+
+function showLock(errMsg){
+  document.getElementById('lockScreen').classList.remove('hidden');
+  document.getElementById('lockErr').textContent = errMsg || '';
+  const input = document.getElementById('pinInput');
+  input.value = '';
+  setTimeout(() => input.focus(), 50);
+}
+
+function hideLock(){ document.getElementById('lockScreen').classList.add('hidden'); }
+
+async function tryUnlock(){
+  const pin = document.getElementById('pinInput').value.trim();
+  if(!pin){ return; }
+  sessionStorage.setItem('relevoPin', pin);
+  document.getElementById('lockErr').textContent = '';
+  const success = await loadData();
+  if(success) hideLock();
+}
+
+document.getElementById('btnUnlock').addEventListener('click', tryUnlock);
+document.getElementById('pinInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') tryUnlock(); });
+document.getElementById('btnRefresh').addEventListener('click', loadData);
+
+function setStatus(msg, cls){
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = cls || '';
+}
+
+function render(){
+  const main = document.getElementById('rooms');
+  main.innerHTML = '';
+  roomsData.forEach(room => {
+    const div = document.createElement('div');
+    div.className = 'room';
+    div.dataset.roomL = room.roomL;
+
+    const head = document.createElement('div');
+    head.className = 'room-head';
+    head.innerHTML = `<label><input type="checkbox" class="printChk" checked> Hab. ${room.roomL.replace(/[PV]$/,'')}</label>`;
+    div.appendChild(head);
+
+    const bedsWrap = document.createElement('div');
+    bedsWrap.className = 'beds';
+    room.beds.forEach((bed, idx) => {
+      const roomCode = idx === 0 ? room.roomL : room.roomR;
+      const bedLetter = room.double ? (idx === 0 ? 'P' : 'V') : '·';
+      bedsWrap.appendChild(renderBed(roomCode, bedLetter, bed));
+    });
+    div.appendChild(bedsWrap);
+    main.appendChild(div);
+  });
+}
+
+function renderBed(roomCode, bedLetter, bed){
+  const wrap = document.createElement('div');
+  wrap.className = 'bed ' + (bedLetter === 'P' ? 'P' : bedLetter === 'V' ? 'V' : '');
+
+  const title = document.createElement('div');
+  title.className = 'bed-title';
+
+  const numSpan = document.createElement('span');
+  numSpan.className = 'bed-number';
+  numSpan.innerHTML = bedLetter !== '·' ? `${roomCode.replace(/[PV]$/,'')} <span class="tag">${bedLetter}</span>` : roomCode;
+  title.appendChild(numSpan);
+
+  const nombreBox = makeField(roomCode, 'nombre', bed.nombre, bed.nombreHtml, false, false, true);
+  nombreBox.classList.add('header-nombre-box');
+  title.appendChild(nombreBox);
+
+  title.appendChild(makeEspecialidadSelect(roomCode, bed.especialidad));
+  wrap.appendChild(title);
+
+  wrap.appendChild(makeField(roomCode, 'jc', bed.jc, bed.jcHtml));
+  wrap.appendChild(makeField(roomCode, 'ap', bed.ap, bed.apHtml));
+
+  wrap.appendChild(makeAlergiaRow(roomCode, bed.alergiaSiNo, bed.alergiaDetalle));
+
+  const row3 = document.createElement('div');
+  row3.className = 'row3';
+  row3.appendChild(makeField(roomCode, 'viaTipo', bed.viaTipo));
+  row3.appendChild(makeField(roomCode, 'viaFecha', bed.viaFecha));
+  row3.appendChild(makeSvField(roomCode, bed.svFechaExtra, bed.svCheck));
+  wrap.appendChild(row3);
+
+  wrap.appendChild(makeField(roomCode, 'pte', bed.pte, bed.pteHtml));
+  wrap.appendChild(makeField(roomCode, 'otros', bed.otros, bed.otrosHtml));
+
+  return wrap;
+}
+
+function parseSvValue(raw){
+  raw = (raw || '').toString().trim();
+  if(/^control\s*de\s*diuresis$/i.test(raw) || /^control\s*de\s*diur[eé]sis$/i.test(raw)) return { fecha: '', tipo: '', cd: true };
+  const m = raw.match(/^(.*?)\s*\(([^)]*)\)\s*$/);
+  if(m) return { fecha: m[1].trim(), tipo: m[2].trim(), cd: false };
+  return { fecha: raw, tipo: '', cd: false };
+}
+
+function composeSvValue(fecha, tipo){
+  fecha = (fecha || '').trim();
+  return !fecha ? '' : (tipo ? `${fecha} (${tipo})` : fecha);
+}
+
+function makeSvField(roomCode, rawValue, checkValue){
+  const box = document.createElement('div');
+  box.className = 'field';
+  const label = document.createElement('label');
+  label.textContent = 'SV (fecha)';
+  box.appendChild(label);
+
+  const { fecha, tipo, cd } = parseSvValue(rawValue);
+  const row = document.createElement('div');
+  row.className = 'sv-row';
+
+  // Columna SV + Fecha centrada debajo
+  const groupSv = document.createElement('div');
+  groupSv.className = 'sv-group-sv';
+
+  const svLabel = document.createElement('label');
+  svLabel.className = 'sv-check';
+  const svCheckbox = document.createElement('input');
+  svCheckbox.type = 'checkbox';
+  svCheckbox.checked = !!checkValue;
+  svLabel.appendChild(svCheckbox);
+  svLabel.appendChild(document.createTextNode('SV'));
+
+  const dateInput = document.createElement('input');
+  dateInput.type = 'text';
+  dateInput.value = fecha;
+  enforceDdMm(dateInput);
+
+  groupSv.appendChild(svLabel);
+  groupSv.appendChild(dateInput);
+
+  // Columna CD aislada
+  const groupCd = document.createElement('div');
+  groupCd.className = 'sv-group-cd';
+
+  const cdLabel = document.createElement('label');
+  cdLabel.className = 'sv-check';
+  const cdCheckbox = document.createElement('input');
+  cdCheckbox.type = 'checkbox';
+  cdCheckbox.checked = cd;
+  cdLabel.appendChild(cdCheckbox);
+  cdLabel.appendChild(document.createTextNode('CD'));
+
+  groupCd.appendChild(cdLabel);
+
+  function trigger(){
+    box.classList.add('dirty'); box.classList.remove('saved');
+    scheduleSave(roomCode, 'svCheck', svCheckbox.checked, box);
+    // Cambiado a "Control de diuresis" sin tilde
+    const valor = cdCheckbox.checked ? 'Control de diuresis' : composeSvValue(dateInput.value, svCheckbox.checked ? 'Implantación' : 'Extracción');
+    scheduleSave(roomCode, 'svFechaExtra', valor, box);
+  }
+  dateInput.addEventListener('input', trigger);
+  svCheckbox.addEventListener('change', trigger);
+  cdCheckbox.addEventListener('change', trigger);
+
+  row.appendChild(groupSv); 
+  row.appendChild(groupCd);
+  box.appendChild(row);
+  return box;
+}
+
+function makeField(roomCode, field, value, htmlValue, isRich, grow, isInlineName){
+  const box = document.createElement('div');
+  box.className = 'field';
+  const label = document.createElement('label');
+  label.textContent = FIELD_LABELS[field];
+  box.appendChild(label);
+
+  if(RICHTEXT_FIELDS.includes(field)){
+    const div = document.createElement('div');
+    div.className = 'rich-field field-' + field + (isInlineName ? ' inline-name' : '');
+    div.contentEditable = 'true';
+    div.dataset.room = roomCode;
+    div.dataset.field = field;
+    if(htmlValue){ div.innerHTML = htmlValue; } else { div.textContent = value || ''; }
+
+    div.addEventListener('input', () => {
+      box.classList.add('dirty'); box.classList.remove('saved');
+      scheduleSaveRich(div, box);
+    });
+
+    if(isInlineName || field === 'jc'){
+      div.addEventListener('keydown', (e) => { if(e.key === 'Enter') e.preventDefault(); });
+    }
+
+    box.appendChild(div);
+    attachCapacity(div, field, box);
+    return box;
+  }
+
+  let input;
+  if(field === 'especialidad'){
+    input = makeEspecialidadSelect(roomCode, value);
+    box.appendChild(input);
+    return box;
+  } else if(field === 'viaTipo'){
+    input = document.createElement('select');
+    input.className = 'via-select';
+    VIA_TIPOS.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt; o.textContent = opt || '—';
+      if(String(value).toUpperCase() === opt.toUpperCase()) o.selected = true;
+      input.appendChild(o);
+    });
+    applyViaColor(input);
+  } else if(field === 'viaFecha'){
+    input = document.createElement('input');
+    input.type = 'text'; input.value = value || '';
+    enforceDdMm(input);
+  } else {
+    input = document.createElement('input');
+    input.type = 'text'; input.value = value || '';
+  }
+
+  input.addEventListener('input', () => {
+    box.classList.add('dirty'); box.classList.remove('saved');
+    scheduleSave(roomCode, field, input.value, box);
+  });
+  if(input.tagName === 'SELECT'){
+    input.addEventListener('change', () => {
+      box.classList.add('dirty'); box.classList.remove('saved');
+      scheduleSave(roomCode, field, input.value, box);
+      if(field === 'viaTipo') applyViaColor(input);
+    });
+  }
+
+  box.appendChild(input);
+  return box;
+}
+
+function makeAlergiaRow(roomCode, siNoValue, detalleValue){
+  const row = document.createElement('div');
+  row.className = 'row2';
+
+  const boxSiNo = document.createElement('div');
+  boxSiNo.className = 'field';
+  const labelSiNo = document.createElement('label');
+  labelSiNo.textContent = FIELD_LABELS.alergiaSiNo;
+  boxSiNo.appendChild(labelSiNo);
+  const selectSiNo = document.createElement('select');
+  selectSiNo.className = 'alergia-select';
+  ['NO', 'SI'].forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt; o.textContent = opt;
+    if(String(siNoValue).toUpperCase() === opt) o.selected = true;
+    selectSiNo.appendChild(o);
+  });
+  boxSiNo.appendChild(selectSiNo);
+
+  const boxDetalle = document.createElement('div');
+  boxDetalle.className = 'field';
+  const labelDetalle = document.createElement('label');
+  labelDetalle.textContent = FIELD_LABELS.alergiaDetalle;
+  boxDetalle.appendChild(labelDetalle);
+  const inputDetalle = document.createElement('input');
+  inputDetalle.type = 'text'; inputDetalle.value = detalleValue || '';
+  inputDetalle.className = 'alergia-detalle';
+  boxDetalle.appendChild(inputDetalle);
+
+  function syncColor(){
+    const isSi = selectSiNo.value.toUpperCase() === 'SI';
+    const color = isSi ? '#fff6c9' : '';
+    selectSiNo.style.backgroundColor = color;
+    inputDetalle.style.backgroundColor = color;
+  }
+  syncColor();
+
+  selectSiNo.addEventListener('change', () => {
+    boxSiNo.classList.add('dirty'); boxSiNo.classList.remove('saved');
+    scheduleSave(roomCode, 'alergiaSiNo', selectSiNo.value, boxSiNo);
+    syncColor();
+  });
+  inputDetalle.addEventListener('input', () => {
+    boxDetalle.classList.add('dirty'); boxDetalle.classList.remove('saved');
+    scheduleSave(roomCode, 'alergiaDetalle', inputDetalle.value, boxDetalle);
+  });
+
+  row.appendChild(boxSiNo); row.appendChild(boxDetalle);
+  return row;
+}
+
+function makeEspecialidadSelect(roomCode, value){
+  const select = document.createElement('select');
+  select.className = 'especialidad-select';
+  ESPECIALIDADES.forEach(opt => {
+    const o = document.createElement('option');
+    o.value = opt; o.textContent = opt || '—';
+    if(String(value).toUpperCase() === opt.toUpperCase()) o.selected = true;
+    select.appendChild(o);
+  });
+  applyEspecialidadColor(select);
+  select.addEventListener('change', () => {
+    applyEspecialidadColor(select);
+    select.classList.add('dirty'); select.classList.remove('saved');
+    scheduleSave(roomCode, 'especialidad', select.value, select);
+  });
+  return select;
+}
+
+function applyEspecialidadColor(select){
+  const color = ESPECIALIDAD_COLORS[select.value.toUpperCase()];
+  select.style.backgroundColor = color || '';
+  select.style.fontWeight = color ? '700' : '';
+}
+
+function applyViaColor(select){
+  const color = VIA_COLORS[select.value.toUpperCase()];
+  select.style.backgroundColor = color || '';
+}
+
+function enforceDdMm(el){
+  el.classList.add('date-input');
+  el.setAttribute('maxlength', '5');
+  el.setAttribute('placeholder', 'dd/mm');
+  el.setAttribute('inputmode', 'numeric');
+  el.addEventListener('input', () => {
+    const digits = el.value.replace(/\D/g, '').slice(0, 4);
+    el.value = digits.length > 2 ? digits.slice(0, 2) + '/' + digits.slice(2) : digits;
+  });
+}
+
+function scheduleSave(roomCode, field, value, box){
+  const key = roomCode + '|' + field;
+  clearTimeout(saveTimers[key]);
+  saveTimers[key] = setTimeout(() => saveField(roomCode, field, value, box), 700);
+}
+
+async function saveField(roomCode, field, value, box){
+  setStatus('Guardando…', 'saving');
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'write', room: roomCode, field, value, pin: getPin() })
+    });
+    const json = await res.json();
+    if(!json.ok){
+      if(json.error === 'PIN incorrecto'){
+        sessionStorage.removeItem('relevoPin');
+        showLock('Tu sesión ha caducado. Vuelve a introducir el PIN.');
+      }
+      throw new Error(json.error || 'Error al guardar');
+    }
+    box.classList.remove('dirty'); box.classList.add('saved');
+    setStatus('Guardado ✓', 'ok');
+  }catch(err){
+    setStatus('Error al guardar: ' + err.message, 'err');
+  }
+}
+
+// ===== ESCALADO DE CAPACIDAD Y LÍMITE DE SALTOS DE LÍNEA =====
+const SIZE_PX = { small: 11, normal: 13, large: 14 };
+
+function sizeCost(sizeKey){
+  const px = SIZE_PX[sizeKey] || 13;
+  return (px / 13) * (px / 13);
+}
+
+function analyzeContent(div){
+  const { runs, text } = extractRuns(div);
+  let weighted = 0;
+  let maxFontSize = 'normal';
+
+  runs.forEach(r => { 
+    weighted += (r.end - r.start) * sizeCost(r.size);
+    if (r.size === 'large') maxFontSize = 'large';
+    else if (r.size === 'normal' && maxFontSize !== 'large') maxFontSize = 'normal';
+    else if (r.size === 'small' && maxFontSize === 'normal') maxFontSize = 'small';
+  });
+
+  const lineBreaks = (text.match(/\n/g) || []).length;
+
+  return { weighted, lineBreaks, maxFontSize };
+}
+
+function attachCapacity(div, field, box){
+  const limit = capacities[field] || 150;
+  const counter = document.createElement('div');
+  counter.className = 'char-counter';
+  let lastValidHtml = div.innerHTML;
+
+  function updateCounter(analysis){
+    const maxBreaks = analysis.maxFontSize === 'small' ? 4 : 3;
+    counter.textContent = Math.round(analysis.weighted) + ' / ' + limit + ' | Lín: ' + (analysis.lineBreaks + 1) + '/' + (maxBreaks + 1);
+    counter.classList.toggle('over', analysis.weighted >= limit || analysis.lineBreaks > maxBreaks);
+  }
+
+  div.addEventListener('input', () => {
+    const analysis = analyzeContent(div);
+    const maxAllowedBreaks = analysis.maxFontSize === 'small' ? 4 : 3;
+
+    if(analysis.weighted > limit || analysis.lineBreaks > maxAllowedBreaks){
+      div.innerHTML = lastValidHtml;
+      
+      const range = document.createRange();
+      range.selectNodeContents(div);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      updateCounter(analyzeContent(div));
+      return;
+    }
+
+    lastValidHtml = div.innerHTML;
+    updateCounter(analysis);
+  });
+
+  updateCounter(analyzeContent(div));
+  box.appendChild(counter);
+}
+
+// EXTRACCIÓN CON TRATAMIENTO DE SALTOS DE LÍNEA DE NAVEGADOR
+function extractRuns(root){
+  let text = '';
+  const runs = [];
+
+  function walk(node, bold, size){
+    if(node.nodeType === Node.TEXT_NODE){
+      const start = text.length;
+      text += node.textContent;
+      const end = text.length;
+      if(end > start) runs.push({ start, end, bold, size });
+      return;
+    }
+    if(node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const tag = node.tagName;
+    if(tag === 'BR'){
+      const start = text.length;
+      text += '\n';
+      runs.push({ start, end: text.length, bold, size });
+      return;
+    }
+
+    let nb = bold, ns = size;
+    if(tag === 'B' || tag === 'STRONG') nb = true;
+    if(node.style && (node.style.fontWeight === 'bold' || node.style.fontWeight === '700')) nb = true;
+    if(tag === 'FONT' && node.getAttribute('size')){
+      const n = parseInt(node.getAttribute('size'), 10);
+      if(n >= 4) ns = 'large';
+      else if(n <= 2) ns = 'small';
+      else ns = 'normal';
+    }
+
+    const isBlock = (tag === 'DIV' || tag === 'P') && node !== root;
+    if(isBlock && text.length > 0 && !text.endsWith('\n')){
+      const start = text.length;
+      text += '\n';
+      runs.push({ start, end: text.length, bold: false, size: 'normal' });
+    }
+
+    Array.from(node.childNodes).forEach(child => walk(child, nb, ns));
+  }
+
+  Array.from(root.childNodes).forEach(child => walk(child, false, 'normal'));
+
+  const merged = [];
+  runs.forEach(r => {
+    const last = merged[merged.length - 1];
+    if(last && last.bold === r.bold && last.size === r.size && last.end === r.start){
+      last.end = r.end;
+    } else {
+      merged.push({ ...r });
+    }
+  });
+  return { text, runs: merged };
+}
+
+function scheduleSaveRich(div, box){
+  const key = div.dataset.room + '|' + div.dataset.field;
+  clearTimeout(saveTimers[key]);
+  saveTimers[key] = setTimeout(() => saveRichField(div, box), 700);
+}
+
+async function saveRichField(div, box){
+  const { text, runs } = extractRuns(div);
+  const payload = {
+    action: 'writeRich',
+    room: div.dataset.room,
+    field: div.dataset.field,
+    text,
+    runs: runs.map(r => ({
+      start: r.start, end: r.end, bold: r.bold,
+      size: r.size === 'large' ? 14 : r.size === 'small' ? 11 : null
+    })),
+    pin: getPin()
+  };
+  setStatus('Guardando…', 'saving');
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if(!json.ok){
+      if(json.error === 'PIN incorrecto'){
+        sessionStorageremoveItem('relevoPin');
+        showLock('Tu sesión ha caducado. Vuelve a introducir el PIN.');
+      }
+      throw new Error(json.error || 'Error al guardar');
+    }
+    if(box){ box.classList.remove('dirty'); box.classList.add('saved'); }
+    setStatus('Guardado ✓', 'ok');
+  }catch(err){
+    setStatus('Error al guardar: ' + err.message, 'err');
+  }
+}
+
+// ===== BARRA FLOTANTE DE FORMATO =====
+const selToolbar = document.getElementById('selectionToolbar');
+const toolBold = document.getElementById('toolBold');
+const toolSizeSmall = document.getElementById('toolSizeSmall');
+const toolSizeMed = document.getElementById('toolSizeMed');
+const toolSizeLarge = document.getElementById('toolSizeLarge');
+let activeRichField = null;
+
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if(!sel || sel.isCollapsed){
+    selToolbar.classList.remove('show');
+    activeRichField = null;
+    return;
+  }
+  let anchor = sel.anchorNode;
+  if(anchor.nodeType === Node.TEXT_NODE) anchor = anchor.parentNode;
+  const richDiv = anchor.closest ? anchor.closest('.rich-field') : null;
+  if(!richDiv){
+    selToolbar.classList.remove('show');
+    activeRichField = null;
+    return;
+  }
+  activeRichField = richDiv;
+  const range = sel.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  if(rect.width === 0) return;
+  selToolbar.style.top = Math.max(10, rect.top - 45) + 'px';
+  selToolbar.style.left = Math.max(10, rect.left + (rect.width / 2) - 80) + 'px';
+  selToolbar.classList.add('show');
+});
+
+function applyFormat(command, value){
+  if(!activeRichField) return;
+  document.execCommand(command, false, value);
+  activeRichField.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+toolBold.addEventListener('mousedown', (e) => { e.preventDefault(); applyFormat('bold'); });
+toolSizeSmall.addEventListener('mousedown', (e) => { e.preventDefault(); applyFormat('fontSize', '1'); });
+toolSizeMed.addEventListener('mousedown', (e) => { e.preventDefault(); applyFormat('fontSize', '3'); });
+toolSizeLarge.addEventListener('mousedown', (e) => { e.preventDefault(); applyFormat('fontSize', '5'); });
+
+// ===== SELECCIÓN E IMPRESIÓN DESDE GOOGLE SHEETS =====
+document.getElementById('btnSelectAll').addEventListener('click', () => {
+  document.querySelectorAll('.printChk').forEach(c => c.checked = true);
+});
+document.getElementById('btnSelectNone').addEventListener('click', () => {
+  document.querySelectorAll('.printChk').forEach(c => c.checked = false);
+});
+document.querySelectorAll('.quick-range').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const from = parseInt(btn.dataset.from, 10);
+    const to = parseInt(btn.dataset.to, 10);
+    document.querySelectorAll('.room').forEach(roomEl => {
+      const num = parseInt(roomEl.dataset.roomL.replace(/[PV]$/,''), 10);
+      const chk = roomEl.querySelector('.printChk');
+      if(chk) chk.checked = (num >= from && num <= to);
+    });
+  });
+});
+
+document.getElementById('btnPrintSheets').addEventListener('click', async () => {
+  const selectedRooms = [];
+  document.querySelectorAll('.room').forEach(r => {
+    const chk = r.querySelector('.printChk');
+    if(chk && chk.checked){
+      selectedRooms.push(r.dataset.roomL.replace(/[PV]$/,''));
+    }
+  });
+  if(selectedRooms.length === 0){
+    alert('Selecciona al menos una habitación para imprimir.');
+    return;
+  }
+  setStatus('Generando PDF oficial desde Sheets…', 'saving');
+  try{
+    const res = await fetch(APPS_SCRIPT_URL + '?action=printUrls&rooms=' + encodeURIComponent(selectedRooms.join(',')) + '&pin=' + encodeURIComponent(getPin()));
+    const json = await res.json();
+    if(!json.ok) throw new Error(json.error || 'Error al obtener URLs');
+    json.urls.forEach(url => window.open(url, '_blank'));
+    setStatus('PDF listo ✓', 'ok');
+  }catch(err){
+    setStatus('Error al imprimir: ' + err.message, 'err');
+  }
+});
+
+if(getPin()){ loadData(); } else { showLock(); }
+</script>
+</body>
+</html>
