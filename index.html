@@ -165,34 +165,138 @@
   .lock-box .err{ color:#b3261e; font-size:.8rem; min-height:1.1em; margin-bottom:8px; }
 
   /* ===== IMPRESIÓN WEB LOCAL ===== */
-  @page{ size:A4; margin:8mm; }
-  /* ===== IMPRESIÓN WEB LOCAL (AJUSTE 1 BLOQUE POR HOJA A4) ===== */
+ /* ===== IMPRESIÓN WEB LOCAL: VERTICAL (ESTILO GOOGLE SHEETS) ===== */
 @media print {
-  /* Ocultar elementos de la interfaz web */
+  /* 1. Ocultar interfaz de la web */
   header, .toolbar, #lockScreen, .room-head, #selectionToolbar, .char-counter {
     display: none !important;
   }
 
-  /* Configuración de la página A4 (Orientación Vertical/Portrait) */
+  /* 2. Forzar A4 Vertical con márgenes apurados al milímetro */
   @page {
     size: A4 portrait;
-    margin: 8mm 10mm; /* Márgenes ajustados para maximizar área de impresión */
+    margin: 4mm 5mm 4mm 5mm;
   }
 
-  body {
+  html, body {
     background: #fff !important;
     color: #000 !important;
-    font-size: 8.5pt;
-    line-height: 1.2;
-    -webkit-print-color-adjust: exact; /* Conserva colores de especialidades/vías al imprimir */
+    font-size: 6.8pt;
+    line-height: 1.15;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  main {
+  /* 3. Rejilla a 2 columnas principales (Layout idéntico al PDF de Sheets) */
+  main#rooms {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important; /* 2 habitaciones por fila */
+    gap: 4px 6px !important;
     max-width: none !important;
     padding: 0 !important;
     margin: 0 !important;
   }
+
+  /* Ocultar las habitaciones no seleccionadas */
+  .room.not-selected {
+    display: none !important;
+  }
+
+  /* 4. Tarjeta de Habitación */
+  .room {
+    border: 0.9pt solid #1c4e73 !important;
+    border-radius: 3px;
+    margin: 0 !important;
+    padding: 2px 3px !important;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    background: #fff !important;
+  }
+
+  /* Distribución interna P y V dentro de cada habitación */
+  .beds {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 3px !important;
+  }
+
+  .bed {
+    padding: 1px 2px !important;
+    border: 0.5pt solid #cfd8de !important;
+    border-radius: 2px;
+    background: #fafbfc !important;
+  }
+
+  .bed + .bed {
+    border-left: 0.5pt solid #cfd8de !important;
+  }
+
+  /* Encabezados de cama */
+  .bed-title {
+    font-size: 7pt !important;
+    font-weight: bold;
+    border-bottom: 0.8pt solid #1c4e73;
+    padding-bottom: 1px;
+    margin-bottom: 2px !important;
+  }
+
+  .bed-title .especialidad-select {
+    font-size: 5.8pt !important;
+    padding: 0 1px !important;
+    height: 11px;
+  }
+
+  /* 5. DELIMITACIÓN CLARA DE LAS VENTANAS DE TEXTO */
+  .field {
+    margin-bottom: 1.5px !important;
+  }
+
+  .field label {
+    font-size: 5pt !important;
+    font-weight: 700;
+    color: #1c4e73 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    margin-bottom: 0px !important;
+    display: block;
+  }
+
+  /* Cajas de texto con formato marco celda */
+  .field input, .field select, .rich-field {
+    border: 0.5pt solid #666666 !important;
+    background: #ffffff !important;
+    padding: 1px 2px !important;
+    font-size: 6.5pt !important;
+    border-radius: 2px;
+    min-height: 11px !important;
+    line-height: 1.1 !important;
+    color: #000 !important;
+  }
+
+  /* Alturas ajustadas para áreas multilínea (AP, Pendiente, Otros) */
+  .rich-field.grow-area {
+    min-height: 24pt !important;
+    max-height: 24pt !important;
+    overflow: hidden !important;
+  }
+
+  /* Filas compuestas */
+  .row2, .row3 {
+    gap: 2px !important;
+  }
+
+  .sv-check {
+    font-size: 5.5pt !important;
+  }
+  
+  .sv-check input[type="checkbox"] {
+    width: 9px !important;
+    height: 9px !important;
+  }
+}
 
   /* FORZAR SALTO DE PÁGINA: Cada bloque de habitación ocupa una hoja A4 independiente */
   .room {
