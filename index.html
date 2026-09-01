@@ -166,21 +166,123 @@
 
   /* ===== IMPRESIÓN WEB LOCAL ===== */
   @page{ size:A4; margin:8mm; }
-  @media print{
-    header, .toolbar, #lockScreen, .room-head, #selectionToolbar, .char-counter{ display:none !important; }
-    body{ background:#fff; font-size:7pt; line-height:1.15; color:#000; }
-    main{ max-width:none; padding:0; margin:0; border:0.9pt solid #333; }
-    .room{ border:none; border-bottom:0.9pt solid #333; margin:0; padding:1.5pt 0; border-radius:0; break-inside: avoid; }
-    .room.not-selected{ display:none; }
-    .beds{ display:grid !important; grid-template-columns:1fr 1fr !important; gap:0; }
-    .bed{ padding:1.5pt 4pt; }
-    .bed + .bed{ border-left:0.9pt solid #333; }
-    .bed-title{ font-size:7.5pt; margin-bottom:2pt; font-weight:700; border-bottom:0.5pt solid #999; }
-    .field{ margin-bottom:0.5pt; }
-    .field label{ font-size:5.3pt; margin-bottom:0; color:#555; }
-    .field input, .field select, .rich-field{ border:none; background:transparent; padding:0; font-size:7pt; min-height:auto; color:#000; }
-    .rich-field.grow-area{ min-height:22pt; max-height:22pt; overflow:hidden; }
+  /* ===== IMPRESIÓN WEB LOCAL (AJUSTE 1 BLOQUE POR HOJA A4) ===== */
+@media print {
+  /* Ocultar elementos de la interfaz web */
+  header, .toolbar, #lockScreen, .room-head, #selectionToolbar, .char-counter {
+    display: none !important;
   }
+
+  /* Configuración de la página A4 (Orientación Vertical/Portrait) */
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm; /* Márgenes ajustados para maximizar área de impresión */
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 8.5pt;
+    line-height: 1.2;
+    -webkit-print-color-adjust: exact; /* Conserva colores de especialidades/vías al imprimir */
+    print-color-adjust: exact;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* FORZAR SALTO DE PÁGINA: Cada bloque de habitación ocupa una hoja A4 independiente */
+  .room {
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    border: 1.5pt solid #1c4e73 !important; /* Borde exterior sólido */
+    border-radius: 6px;
+    margin: 0 0 0 0 !important;
+    padding: 6px !important;
+    box-sizing: border-box;
+    height: 98vh; /* Ocupa casi la totalidad de la altura de la página */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .room.not-selected {
+    display: none !important;
+  }
+
+  /* Estructura de camas a 2 columnas */
+  .beds {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important; /* Separa visualmente las dos camas */
+    height: 100%;
+  }
+
+  .bed {
+    padding: 6px 10px !important;
+    border: 1pt solid #cfd8de !important;
+    border-radius: 6px;
+    background: #fafbfc !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .bed + .bed {
+    border-left: 1pt solid #cfd8de !important;
+  }
+
+  .bed-title {
+    font-size: 10pt !important;
+    font-weight: bold;
+    border-bottom: 1.5pt solid #1c4e73;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
+  }
+
+  /* SEPARACIÓN Y CLARIDAD EN LOS CAMPOS DE TEXTO */
+  .field {
+    margin-bottom: 6px !important;
+  }
+
+  .field label {
+    font-size: 6.5pt !important;
+    font-weight: 700;
+    color: #1c4e73 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1px !important;
+    display: block;
+  }
+
+  /* Cajas de texto delimitadas claramente */
+  .field input, .field select, .rich-field {
+    border: 0.8pt solid #a0aab2 !important;
+    background: #ffffff !important;
+    padding: 3px 5px !important;
+    font-size: 8.5pt !important;
+    border-radius: 4px;
+    min-height: auto;
+    color: #000 !important;
+  }
+
+  /* Áreas multilínea (AP, Pendiente, Otros) con altura clara */
+  .rich-field.grow-area {
+    min-height: 55pt !important;
+    max-height: 55pt !important;
+    overflow: hidden;
+    background: #fff !important;
+  }
+
+  .row2, .row3 {
+    gap: 6px !important;
+  }
+}
 </style>
 </head>
 <body>
