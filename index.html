@@ -77,7 +77,7 @@
   .bed-title .bed-number{ display:flex; align-items:center; gap:4px; white-space:nowrap; }
   .bed-title .header-nombre-box{ flex:1; margin:0 4px; }
   .bed-title .especialidad-select{
-    width:auto; max-width:100px; padding:4px 6px; font-size:.78rem;
+    width:auto; max-width:100px; padding:4px 6px; font-size:.78rem; border-radius:6px;
   }
   .bed-title .especialidad-select.dirty{ border-color:#b4790f; }
   .bed-title .especialidad-select.saved{ border-color:var(--ok); }
@@ -94,24 +94,37 @@
     font: inherit; font-size:.88rem; background:#fdfdfd;
   }
 
-  /* ===== DIMENSIONADO EXACTO RÉPLICA GOOGLE SHEETS ===== */
+  /* ===== DIMENSIONADO ESCALADO x1.35 (mantiene la misma proporción que
+     Sheets — mismos saltos de línea, mismo texto que cabe — pero se ve
+     más grande en pantalla para facilitar la edición) ===== */
   .rich-field{
     white-space:pre-wrap; word-break:break-word; outline:none;
-    line-height:1.25; font-size:13px; font-family: Arial, sans-serif;
+    line-height:1.25; font-size:18px; font-family: Arial, sans-serif;
     overflow: hidden;
     box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
   }
 
+  /* Ancho real de la celda de Sheets (78+32+32+224+100=466px) × 1.35 */
+  .rich-field.field-jc,
+  .rich-field.field-ap,
+  .rich-field.field-pte,
+  .rich-field.field-otros{
+    width:479px; max-width:479px; padding:5px 7px;
+  }
+
   .rich-field.inline-name{ min-height:28px; height:28px; padding:4px 6px; }
-  .rich-field.field-jc{ min-height:42px; height:42px; }
-  .rich-field.field-ap{ min-height:75px; height:75px; }
-  .rich-field.field-pte{ min-height:75px; height:75px; }
-  .rich-field.field-otros{ min-height:75px; height:75px; }
+  .rich-field.field-jc{ min-height:34px; height:34px; }
+  .rich-field.field-ap{ min-height:57px; height:57px; }
+  .rich-field.field-alergia-detalle{
+    width:374px; max-width:374px; min-height:57px; height:57px; padding:5px 7px;
+  }
+  .rich-field.field-pte{ min-height:101px; height:101px; }
+  .rich-field.field-otros{ min-height:101px; height:101px; }
 
   .rich-field:focus{ border-color: var(--azul); background:#fff; }
-  .rich-field font[size="5"]{ font-size:14px; }
-  .rich-field font[size="3"]{ font-size:13px; }
-  .rich-field font[size="1"]{ font-size:11px; }
+  .rich-field font[size="5"]{ font-size:19px; }
+  .rich-field font[size="3"]{ font-size:18px; }
+  .rich-field font[size="1"]{ font-size:15px; }
 
   .char-counter{
     font-size:.65rem; color:#8a97a3; text-align:right; margin-top:2px;
@@ -140,7 +153,6 @@
   }
   .date-input{ width:58px !important; flex:none !important; text-align:center; padding:3px !important; font-size:.8rem !important; }
   .alergia-select{ width:auto; min-width:0; padding-left:4px; padding-right:4px; }
-  .alergia-detalle{ font-weight:700; }
 
   /* ===== BARRA FLOTANTE DE FORMATO ===== */
   #selectionToolbar{
@@ -224,7 +236,7 @@
 </div>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnvokK8bkwsp5u92QbDIQOc827CZOF9IXj06vIsyeQcdp2Nskwx2gzVi06dJxWu_xG/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxsgTBQycNpr3YzLnlcSUmt039k6DW99ipPF_erP7pg5HtJ2tZ_Cw1Qg6Y6Ew2H7VF3/exec';
 
 const FIELD_LABELS = {
   nombre: 'Nombre (edad)',
@@ -240,7 +252,7 @@ const FIELD_LABELS = {
   otros: 'Otros'
 };
 
-const RICHTEXT_FIELDS = ['nombre', 'jc', 'ap', 'pte', 'otros'];
+const RICHTEXT_FIELDS = ['nombre', 'jc', 'ap', 'pte', 'otros', 'alergiaDetalle'];
 const ESPECIALIDADES = ['', 'COT', 'CIR', 'MI', 'URO', 'NEU', 'DIG', 'CAR', 'OFT', 'DER', 'ORL', 'NEFR'];
 
 const ESPECIALIDAD_COLORS = {
@@ -259,10 +271,10 @@ let saveTimers = {};
 
 let capacities = { 
   nombre: 45,
-  jc: 85,
-  ap: 160, 
-  pte: 160, 
-  otros: 160 
+  jc: 97,
+  ap: 97, 
+  pte: 150, 
+  otros: 150 
 };
 
 function getPin(){ return sessionStorage.getItem('relevoPin') || ''; }
@@ -368,7 +380,7 @@ function renderBed(roomCode, bedLetter, bed){
   wrap.appendChild(makeField(roomCode, 'jc', bed.jc, bed.jcHtml));
   wrap.appendChild(makeField(roomCode, 'ap', bed.ap, bed.apHtml));
 
-  wrap.appendChild(makeAlergiaRow(roomCode, bed.alergiaSiNo, bed.alergiaDetalle));
+  wrap.appendChild(makeAlergiaRow(roomCode, bed.alergiaSiNo, bed.alergiaDetalle, bed.alergiaDetalleHtml));
 
   const row3 = document.createElement('div');
   row3.className = 'row3';
@@ -407,7 +419,6 @@ function makeSvField(roomCode, rawValue, checkValue){
   const row = document.createElement('div');
   row.className = 'sv-row';
 
-  // Grupo SV + Fecha horizontal (lado a lado)
   const groupSv = document.createElement('div');
   groupSv.className = 'sv-group-sv';
 
@@ -427,7 +438,6 @@ function makeSvField(roomCode, rawValue, checkValue){
   groupSv.appendChild(svLabel);
   groupSv.appendChild(dateInput);
 
-  // Grupo CD horizontal
   const groupCd = document.createElement('div');
   groupCd.className = 'sv-group-cd';
 
@@ -526,7 +536,7 @@ function makeField(roomCode, field, value, htmlValue, isRich, grow, isInlineName
   return box;
 }
 
-function makeAlergiaRow(roomCode, siNoValue, detalleValue){
+function makeAlergiaRow(roomCode, siNoValue, detalleValue, detalleHtml){
   const row = document.createElement('div');
   row.className = 'row2';
 
@@ -550,9 +560,13 @@ function makeAlergiaRow(roomCode, siNoValue, detalleValue){
   const labelDetalle = document.createElement('label');
   labelDetalle.textContent = FIELD_LABELS.alergiaDetalle;
   boxDetalle.appendChild(labelDetalle);
-  const inputDetalle = document.createElement('input');
-  inputDetalle.type = 'text'; inputDetalle.value = detalleValue || '';
-  inputDetalle.className = 'alergia-detalle';
+  const inputDetalle = document.createElement('div');
+  inputDetalle.contentEditable = 'true';
+  inputDetalle.className = 'rich-field field-alergia-detalle alergia-detalle';
+  inputDetalle.dataset.room = roomCode;
+  inputDetalle.dataset.field = 'alergiaDetalle';
+  if(detalleHtml){ inputDetalle.innerHTML = detalleHtml; }
+  else { inputDetalle.textContent = detalleValue || ''; }
   boxDetalle.appendChild(inputDetalle);
 
   function syncColor(){
@@ -570,8 +584,9 @@ function makeAlergiaRow(roomCode, siNoValue, detalleValue){
   });
   inputDetalle.addEventListener('input', () => {
     boxDetalle.classList.add('dirty'); boxDetalle.classList.remove('saved');
-    scheduleSave(roomCode, 'alergiaDetalle', inputDetalle.value, boxDetalle);
+    scheduleSaveRich(inputDetalle, boxDetalle);
   });
+  attachOverflowGuard(inputDetalle, boxDetalle);
 
   row.appendChild(boxSiNo); row.appendChild(boxDetalle);
   return row;
@@ -654,6 +669,10 @@ function sizeCost(sizeKey){
   return (px / 13) * (px / 13);
 }
 
+// Líneas base permitidas por campo (con letra normal/grande). Con letra
+// pequeña se permite una línea más, ya que cada línea ocupa menos alto.
+const FIELD_BASE_LINES = { ap: 2, pte: 4, otros: 4, jc: 2, nombre: 1 };
+
 function analyzeContent(div){
   const { runs, text } = extractRuns(div);
   let weighted = 0;
@@ -671,21 +690,37 @@ function analyzeContent(div){
   return { weighted, lineBreaks, maxFontSize };
 }
 
+function maxBreaksFor(field, maxFontSize){
+  const baseLines = FIELD_BASE_LINES[field] || 3;
+  const lines = maxFontSize === 'small' ? baseLines + 1 : baseLines;
+  return lines - 1;
+}
+
+// Pendiente y Otros ya no usan un cálculo de caracteres estimado: se
+// comprueba directamente si el contenido real desborda la caja (con la
+// propia medición del navegador) y se bloquea la edición justo ahí.
+const OVERFLOW_FIELDS = ['jc', 'ap', 'pte', 'otros'];
+
 function attachCapacity(div, field, box){
+  if(OVERFLOW_FIELDS.includes(field)){
+    attachOverflowGuard(div, box);
+    return;
+  }
+
   const limit = capacities[field] || 150;
   const counter = document.createElement('div');
   counter.className = 'char-counter';
   let lastValidHtml = div.innerHTML;
 
   function updateCounter(analysis){
-    const maxBreaks = analysis.maxFontSize === 'small' ? 4 : 3;
+    const maxBreaks = maxBreaksFor(field, analysis.maxFontSize);
     counter.textContent = Math.round(analysis.weighted) + ' / ' + limit + ' | Lín: ' + (analysis.lineBreaks + 1) + '/' + (maxBreaks + 1);
     counter.classList.toggle('over', analysis.weighted >= limit || analysis.lineBreaks > maxBreaks);
   }
 
   div.addEventListener('input', () => {
     const analysis = analyzeContent(div);
-    const maxAllowedBreaks = analysis.maxFontSize === 'small' ? 4 : 3;
+    const maxAllowedBreaks = maxBreaksFor(field, analysis.maxFontSize);
 
     if(analysis.weighted > limit || analysis.lineBreaks > maxAllowedBreaks){
       div.innerHTML = lastValidHtml;
@@ -706,6 +741,47 @@ function attachCapacity(div, field, box){
   });
 
   updateCounter(analyzeContent(div));
+  box.appendChild(counter);
+}
+
+function attachOverflowGuard(div, box){
+  const counter = document.createElement('div');
+  counter.className = 'char-counter';
+  let lastValidHtml = div.innerHTML;
+
+  function fits(){
+    return div.scrollHeight <= div.clientHeight + 1; // +1px de margen por redondeo
+  }
+
+  function updateCounter(){
+    if(fits()){
+      counter.textContent = '';
+      counter.classList.remove('over');
+    } else {
+      counter.textContent = 'Límite de espacio alcanzado';
+      counter.classList.add('over');
+    }
+  }
+
+  div.addEventListener('input', () => {
+    if(!fits()){
+      div.innerHTML = lastValidHtml;
+
+      const range = document.createRange();
+      range.selectNodeContents(div);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      updateCounter();
+      return;
+    }
+    lastValidHtml = div.innerHTML;
+    updateCounter();
+  });
+
+  updateCounter();
   box.appendChild(counter);
 }
 
