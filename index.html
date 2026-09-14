@@ -467,6 +467,14 @@ function makeSvField(roomCode, rawValue, checkValue){
   return box;
 }
 
+// Un campo puede llegar con restos de formato vacío (negrita/tamaño que se
+// aplicó y luego se borró el texto): <font size="1"></font>, <b></b>, etc.
+// Si no queda texto visible, lo tratamos como campo realmente vacío para
+// evitar que esos restos interfieran al empezar a escribir de nuevo.
+function hasRealText(html){
+  return !!(html && html.replace(/<[^>]*>/g, '').trim().length > 0);
+}
+
 function makeField(roomCode, field, value, htmlValue, isRich, grow, isInlineName){
   const box = document.createElement('div');
   box.className = 'field';
@@ -480,7 +488,7 @@ function makeField(roomCode, field, value, htmlValue, isRich, grow, isInlineName
     div.contentEditable = 'true';
     div.dataset.room = roomCode;
     div.dataset.field = field;
-    if(htmlValue){ div.innerHTML = htmlValue; } else { div.textContent = value || ''; }
+    if(htmlValue && hasRealText(htmlValue)){ div.innerHTML = htmlValue; } else { div.textContent = value || ''; }
 
     div.addEventListener('input', () => {
       box.classList.add('dirty'); box.classList.remove('saved');
@@ -565,7 +573,7 @@ function makeAlergiaRow(roomCode, siNoValue, detalleValue, detalleHtml){
   inputDetalle.className = 'rich-field field-alergia-detalle alergia-detalle';
   inputDetalle.dataset.room = roomCode;
   inputDetalle.dataset.field = 'alergiaDetalle';
-  if(detalleHtml){ inputDetalle.innerHTML = detalleHtml; }
+  if(detalleHtml && hasRealText(detalleHtml)){ inputDetalle.innerHTML = detalleHtml; }
   else { inputDetalle.textContent = detalleValue || ''; }
   boxDetalle.appendChild(inputDetalle);
 
