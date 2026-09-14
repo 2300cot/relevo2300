@@ -488,7 +488,7 @@ function makeField(roomCode, field, value, htmlValue, isRich, grow, isInlineName
     div.contentEditable = 'true';
     div.dataset.room = roomCode;
     div.dataset.field = field;
-    if(htmlValue && hasRealText(htmlValue)){ div.innerHTML = htmlValue; } else { div.textContent = value || ''; }
+    if(htmlValue && hasRealText(htmlValue)){ div.innerHTML = htmlValue; } else { div.textContent = (value || '').trim(); }
 
     div.addEventListener('input', () => {
       box.classList.add('dirty'); box.classList.remove('saved');
@@ -574,7 +574,7 @@ function makeAlergiaRow(roomCode, siNoValue, detalleValue, detalleHtml){
   inputDetalle.dataset.room = roomCode;
   inputDetalle.dataset.field = 'alergiaDetalle';
   if(detalleHtml && hasRealText(detalleHtml)){ inputDetalle.innerHTML = detalleHtml; }
-  else { inputDetalle.textContent = detalleValue || ''; }
+  else { inputDetalle.textContent = (detalleValue || '').trim(); }
   boxDetalle.appendChild(inputDetalle);
 
   function syncColor(){
