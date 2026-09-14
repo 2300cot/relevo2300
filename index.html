@@ -693,7 +693,10 @@ function analyzeContent(div){
     else if (r.size === 'small' && maxFontSize === 'normal') maxFontSize = 'small';
   });
 
-  const lineBreaks = (text.match(/\n/g) || []).length;
+  // Si el campo está realmente vacío (solo saltos de línea "fantasma" que el
+  // navegador inserta al borrar todo el texto), no cuentan como salto real —
+  // si no, el sistema deshacía el borrado creyendo que se pasaba de línea.
+  const lineBreaks = text.trim().length === 0 ? 0 : (text.match(/\n/g) || []).length;
 
   return { weighted, lineBreaks, maxFontSize };
 }
