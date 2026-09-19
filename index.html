@@ -48,6 +48,9 @@
   }
   button.primary{ background:var(--azul); color:#fff; border-color:var(--azul);}
   button.ghost{ background:transparent; }
+  .quick-range.active{
+    background: var(--azul); color:#fff; border-color: var(--azul);
+  }
   #status{ font-size:.8rem; color:#647485; margin-left:auto;}
   #status.saving{color:#b4790f;}
   #status.ok{color:var(--ok);}
@@ -58,6 +61,7 @@
   .room{
     background:#fff; border:1px solid var(--gris-borde); border-radius:12px;
     margin: 12px 0; overflow:hidden;
+    scroll-margin-top: 115px;
   }
   .room-head{
     display:flex; align-items:center; gap:8px;
@@ -947,11 +951,24 @@ document.querySelectorAll('.quick-range').forEach(btn => {
   btn.addEventListener('click', () => {
     const from = parseInt(btn.dataset.from, 10);
     const to = parseInt(btn.dataset.to, 10);
+    let firstMatch = null;
+
     document.querySelectorAll('.room').forEach(roomEl => {
       const num = parseInt(roomEl.dataset.roomL.replace(/[PV]$/,''), 10);
       const chk = roomEl.querySelector('.printChk');
-      if(chk) chk.checked = (num >= from && num <= to);
+      const inRange = (num >= from && num <= to);
+      if(chk) chk.checked = inRange;
+      if(inRange && !firstMatch) firstMatch = roomEl;
     });
+
+    // Marcar visualmente qué botón de rango está activo
+    document.querySelectorAll('.quick-range').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Ir directamente a la primera habitación de ese rango
+    if(firstMatch){
+      firstMatch.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   });
 });
 
