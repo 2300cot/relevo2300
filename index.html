@@ -194,6 +194,8 @@
     padding:10px; border:1px solid var(--gris-borde); border-radius:8px; margin-bottom:10px;
   }
   .lock-box button{ width:100%; }
+  .lock-box button:disabled{ opacity:.6; cursor:default; }
+  .lock-box input:disabled{ opacity:.6; }
   .lock-box .err{ color:#b3261e; font-size:.8rem; min-height:1.1em; margin-bottom:8px; }
 </style>
 </head>
@@ -323,8 +325,23 @@ async function tryUnlock(){
   if(!pin){ return; }
   sessionStorage.setItem('relevoPin', pin);
   document.getElementById('lockErr').textContent = '';
+
+  const btn = document.getElementById('btnUnlock');
+  const pinInputEl = document.getElementById('pinInput');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  pinInputEl.disabled = true;
+  btn.textContent = 'Entrando…';
+
   const success = await loadData();
-  if(success) hideLock();
+
+  if(success){
+    hideLock();
+  } else {
+    btn.disabled = false;
+    pinInputEl.disabled = false;
+    btn.textContent = originalLabel;
+  }
 }
 
 document.getElementById('btnUnlock').addEventListener('click', tryUnlock);
